@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hofmann Family History</title>
+<style>
+:root{--bg:#faf7f2;--fg:#2a2622;--muted:#6b635a;--card:#fff;--line:#e3dcd2;--accent:#7a4b2a;
+  --rec:#2f6b3a;--prob:#8a6a12;--hyp:#8a3a3a;font:16px/1.55 Georgia,"Times New Roman",serif}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1a18;--fg:#ece6de;--muted:#a79d91;--card:#262320;--line:#3a3530;
+  --accent:#d9a577;--rec:#7fc48b;--prob:#e0c065;--hyp:#e08a8a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg)}
+main{max-width:980px;margin:auto;padding:24px 16px 64px}
+h1{margin:0 0 4px;font-size:2rem}h2{margin:48px 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.lede{color:var(--muted);margin:0 0 16px}
+a{color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.9rem;color:var(--muted)}
+.b{display:inline-block;font:600 .7rem/1 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;padding:3px 6px;border-radius:4px;border:1px solid currentColor;white-space:nowrap}
+.record{color:var(--rec)}.probable{color:var(--prob)}.hypothesis{color:var(--hyp)}
+.gen{margin-top:28px}.gen>h3{font:600 .8rem system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+.couples{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:12px}
+.couple{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:14px}
+.person h4{margin:0;font-size:1.1rem}.person .par{font-size:.85rem;color:var(--muted);margin:2px 0 6px}
+.person ul{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:.93rem}
+.person li{display:flex;gap:8px;align-items:baseline}.person li a{font-size:.8rem;white-space:nowrap}
+.person li span.t{flex:1}
+.person+.person{border-top:1px dashed var(--line);padding-top:12px}
+.src{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin:12px 0;scroll-margin-top:12px}
+.src h3{margin:0 0 2px;font-size:1.05rem}.src .h{color:var(--muted);font-size:.85rem;margin:0 0 8px}
+.src .note{border-left:3px solid var(--prob);padding-left:10px;font-size:.93rem}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.thumbs img{height:180px;max-width:100%;border:1px solid var(--line);border-radius:4px}
+.src:target{outline:2px solid var(--accent)}
+ol.q li{margin:6px 0}
+footer{color:var(--muted);font-size:.85rem;margin-top:48px}
+</style>
+</head>
+<body>
+<main>
+<h1>Hofmann family of Vockenhausen</h1>
+<p class="lede">Ancestors from Vockenhausen (today part of Eppstein, Taunus) and Immelborn (Thuringia), built only from civil-register entries. Every fact links to its source.</p>
+<div class="legend">
+  <span><span class="b record">record</span> read from the scan</span>
+  <span><span class="b probable">probable</span> likely reading or inference</span>
+  <span><span class="b hypothesis">hypothesis</span> family belief, no record yet</span>
+</div>
+
+<h2>Family</h2>
+<div id="tree"></div>
+
+<h2>Sources</h2>
+<div id="sources"></div>
+
+<h2>Open questions</h2>
+<ol class="q" id="questions"></ol>
+
+<footer>Living people are not included. Transcriptions are working readings of old German handwriting (Kurrent); a “[?]” marks an uncertain word. Corrections welcome via GitHub issues.</footer>
+</main>
+<script src="data.js"></script>
+<script>
+const byId = Object.fromEntries(PEOPLE.map(p => [p.id, p]));
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const GEN = {1: "Great-great-great-grandparents", 2: "Great-great-grandparents", 3: "Great-grandparents", 4: "Grandparents"};
+
+function person(p) {
+  const par = p.parents ? `<p class="par">Child of ${p.parents.map(id => `<a href="#${id}">${esc(byId[id].name)}</a>`).join(" and ")}${p.parentsStatus ? ` <span class="b ${p.parentsStatus}">${p.parentsStatus}</span>` : ""}</p>` : "";
+  const facts = p.facts.map(([t, s, src]) =>
+    `<li><span class="b ${s}">${s}</span><span class="t">${esc(t)}</span><a href="#src-${src}">source</a></li>`).join("");
+  return `<div class="person" id="${p.id}"><h4>${esc(p.name)}</h4>${par}<ul>${facts}</ul></div>`;
+}
+
+const seen = new Set(), tree = [];
+for (const g of [...new Set(PEOPLE.map(p => p.gen))].sort()) {
+  let couples = "";
+  for (const p of PEOPLE.filter(p => p.gen === g)) {
+    if (seen.has(p.id)) continue;
+    const pair = [p, byId[p.spouse]].filter(Boolean);
+    pair.forEach(x => seen.add(x.id));
+    couples += `<div class="couple">${pair.map(person).join("")}</div>`;
+  }
+  tree.push(`<section class="gen"><h3>${GEN[g]}</h3><div class="couples">${couples}</div></section>`);
+}
+document.getElementById("tree").innerHTML = tree.join("");
+
+document.getElementById("sources").innerHTML = Object.entries(SOURCES).map(([id, s]) => `
+  <article class="src" id="src-${id}">
+    <h3>${esc(s.title)}</h3><p class="h">${esc(s.holder)}</p>
+    <p>${esc(s.transcript)}</p>
+    ${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
+    ${s.scans.length ? `<div class="thumbs">${s.scans.map(u => `<a href="${u}"><img src="${u}" alt="Scan: ${esc(s.title)}" loading="lazy"></a>`).join("")}</div>` : ""}
+  </article>`).join("");
+
+document.getElementById("questions").innerHTML = OPEN_QUESTIONS.map(q => `<li>${esc(q)}</li>`).join("");
+</script>
+</body>
+</html>
